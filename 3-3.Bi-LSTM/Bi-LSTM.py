@@ -28,18 +28,18 @@ class BiLSTM(nn.Module):
         self.b = nn.Parameter(torch.ones([n_class]))
 
     def forward(self, X):
-        input = X.transpose(0, 1)  # input : [n_step, batch_size, n_class]
+        input = X.transpose(0, 1)  # input : [n_step, batch_size, n_class] (时序, 批大小, 特征数)
 
-        hidden_state = torch.zeros(1*2, len(X), n_hidden)   # [num_layers(=1) * num_directions(=2), batch_size, n_hidden]
-        cell_state = torch.zeros(1*2, len(X), n_hidden)     # [num_layers(=1) * num_directions(=2), batch_size, n_hidden]
+        hidden_state = torch.zeros(1*2, len(X), n_hidden)   # [层数(=1) * 方向(=2), 批大小, 隐藏层大小]
+        cell_state = torch.zeros(1*2, len(X), n_hidden)     # [层数(=1) * 方向(=2), 批大小, 隐藏层大小]
 
         outputs, (_, _) = self.lstm(input, (hidden_state, cell_state))
-        outputs = outputs[-1]  # [batch_size, n_hidden]
-        model = self.W(outputs) + self.b  # model : [batch_size, n_class]
+        outputs = outputs[-1]  # [批大小, n_hidden * 2] (取最后一个时间步的输出)
+        model = self.W(outputs) + self.b  # model : [批大小, n_class]
         return model
 
 if __name__ == '__main__':
-    n_hidden = 5 # number of hidden units in one cell
+    n_hidden = 5 # 隐藏单元的数量
 
     sentence = (
         'Lorem ipsum dolor sit amet consectetur adipisicing elit '
@@ -61,7 +61,7 @@ if __name__ == '__main__':
     input_batch = torch.FloatTensor(input_batch)
     target_batch = torch.LongTensor(target_batch)
 
-    # Training
+    # 训练模型
     for epoch in range(10000):
         optimizer.zero_grad()
         output = model(input_batch)
@@ -72,6 +72,7 @@ if __name__ == '__main__':
         loss.backward()
         optimizer.step()
 
+    # 预测
     predict = model(input_batch).data.max(1, keepdim=True)[1]
     print(sentence)
     print([number_dict[n.item()] for n in predict.squeeze()])

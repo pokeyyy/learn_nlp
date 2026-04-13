@@ -8,9 +8,9 @@ import torch.nn as nn
 import torch.optim as optim
 import matplotlib.pyplot as plt
 
-# S: Symbol that shows starting of decoding input
-# E: Symbol that shows starting of decoding output
-# P: Symbol that will fill in blank sequence if current batch data size is short than time steps
+# S: 解码器输入的起始符号
+# E: 解码器输出的结束符号
+# P: 当批次数据长度不足时用于填充序列的占位符
 
 def make_batch(sentences):
     input_batch = [[src_vocab[n] for n in sentences[0].split()]]
@@ -32,8 +32,8 @@ def get_sinusoid_encoding_table(n_position, d_model):
 def get_attn_pad_mask(seq_q, seq_k):
     batch_size, len_q = seq_q.size()
     batch_size, len_k = seq_k.size()
-    # eq(zero) is PAD token
-    pad_attn_mask = seq_k.data.eq(0).unsqueeze(1)  # batch_size x 1 x len_k(=len_q), one is masking
+    # 值为0的token是PAD填充符
+    pad_attn_mask = seq_k.data.eq(0).unsqueeze(1)  # batch_size x 1 x len_k(=len_q)，1表示需要掩码的位置
     return pad_attn_mask.expand(batch_size, len_q, len_k)  # batch_size x len_q x len_k
 
 def get_attn_subsequent_mask(seq):
@@ -47,8 +47,8 @@ class ScaledDotProductAttention(nn.Module):
         super(ScaledDotProductAttention, self).__init__()
 
     def forward(self, Q, K, V, attn_mask):
-        scores = torch.matmul(Q, K.transpose(-1, -2)) / np.sqrt(d_k) # scores : [batch_size x n_heads x len_q(=len_k) x len_k(=len_q)]
-        scores.masked_fill_(attn_mask, -1e9) # Fills elements of self tensor with value where mask is one.
+        scores = torch.matmul(Q, K.transpose(-1, -2)) / np.sqrt(d_k) # scores: [batch_size x n_heads x len_q(=len_k) x len_k(=len_q)]
+        scores.masked_fill_(attn_mask, -1e9) # 将掩码位置的分数填充为极小值
         attn = nn.Softmax(dim=-1)(scores)
         context = torch.matmul(attn, V)
         return context, attn
@@ -65,12 +65,12 @@ class MultiHeadAttention(nn.Module):
     def forward(self, Q, K, V, attn_mask):
         # q: [batch_size x len_q x d_model], k: [batch_size x len_k x d_model], v: [batch_size x len_k x d_model]
         residual, batch_size = Q, Q.size(0)
-        # (B, S, D) -proj-> (B, S, D) -split-> (B, S, H, W) -trans-> (B, H, S, W)
+        # (B, S, D) -线性投影-> (B, S, D) -分割-> (B, S, H, W) -转置-> (B, H, S, W)
         q_s = self.W_Q(Q).view(batch_size, -1, n_heads, d_k).transpose(1,2)  # q_s: [batch_size x n_heads x len_q x d_k]
         k_s = self.W_K(K).view(batch_size, -1, n_heads, d_k).transpose(1,2)  # k_s: [batch_size x n_heads x len_k x d_k]
         v_s = self.W_V(V).view(batch_size, -1, n_heads, d_v).transpose(1,2)  # v_s: [batch_size x n_heads x len_k x d_v]
 
-        attn_mask = attn_mask.unsqueeze(1).repeat(1, n_heads, 1, 1) # attn_mask : [batch_size x n_heads x len_q x len_k]
+        attn_mask = attn_mask.unsqueeze(1).repeat(1, n_heads, 1, 1) # attn_mask: [batch_size x n_heads x len_q x len_k]
 
         # context: [batch_size x n_heads x len_q x d_v], attn: [batch_size x n_heads x len_q(=len_k) x len_k(=len_q)]
         context, attn = ScaledDotProductAttention()(q_s, k_s, v_s, attn_mask)
@@ -86,7 +86,7 @@ class PoswiseFeedForwardNet(nn.Module):
         self.layer_norm = nn.LayerNorm(d_model)
 
     def forward(self, inputs):
-        residual = inputs # inputs : [batch_size, len_q, d_model]
+        residual = inputs # inputs: [batch_size, len_q, d_model]
         output = nn.ReLU()(self.conv1(inputs.transpose(1, 2)))
         output = self.conv2(output).transpose(1, 2)
         return self.layer_norm(output + residual)
@@ -98,7 +98,7 @@ class EncoderLayer(nn.Module):
         self.pos_ffn = PoswiseFeedForwardNet()
 
     def forward(self, enc_inputs, enc_self_attn_mask):
-        enc_outputs, attn = self.enc_self_attn(enc_inputs, enc_inputs, enc_inputs, enc_self_attn_mask) # enc_inputs to same Q,K,V
+        enc_outputs, attn = self.enc_self_attn(enc_inputs, enc_inputs, enc_inputs, enc_self_attn_mask) # 编码器输入的Q,K,V相同
         enc_outputs = self.pos_ffn(enc_outputs) # enc_outputs: [batch_size x len_q x d_model]
         return enc_outputs, attn
 
@@ -122,7 +122,7 @@ class Encoder(nn.Module):
         self.pos_emb = nn.Embedding.from_pretrained(get_sinusoid_encoding_table(src_len+1, d_model),freeze=True)
         self.layers = nn.ModuleList([EncoderLayer() for _ in range(n_layers)])
 
-    def forward(self, enc_inputs): # enc_inputs : [batch_size x source_len]
+    def forward(self, enc_inputs): # enc_inputs: [batch_size x source_len]
         enc_outputs = self.src_emb(enc_inputs) + self.pos_emb(torch.LongTensor([[1,2,3,4,0]]))
         enc_self_attn_mask = get_attn_pad_mask(enc_inputs, enc_inputs)
         enc_self_attns = []
@@ -138,7 +138,7 @@ class Decoder(nn.Module):
         self.pos_emb = nn.Embedding.from_pretrained(get_sinusoid_encoding_table(tgt_len+1, d_model),freeze=True)
         self.layers = nn.ModuleList([DecoderLayer() for _ in range(n_layers)])
 
-    def forward(self, dec_inputs, enc_inputs, enc_outputs): # dec_inputs : [batch_size x target_len]
+    def forward(self, dec_inputs, enc_inputs, enc_outputs): # dec_inputs: [batch_size x target_len]
         dec_outputs = self.tgt_emb(dec_inputs) + self.pos_emb(torch.LongTensor([[5,1,2,3,4]]))
         dec_self_attn_pad_mask = get_attn_pad_mask(dec_inputs, dec_inputs)
         dec_self_attn_subsequent_mask = get_attn_subsequent_mask(dec_inputs)
@@ -162,7 +162,7 @@ class Transformer(nn.Module):
     def forward(self, enc_inputs, dec_inputs):
         enc_outputs, enc_self_attns = self.encoder(enc_inputs)
         dec_outputs, dec_self_attns, dec_enc_attns = self.decoder(dec_inputs, enc_inputs, enc_outputs)
-        dec_logits = self.projection(dec_outputs) # dec_logits : [batch_size x src_vocab_size x tgt_vocab_size]
+        dec_logits = self.projection(dec_outputs) # dec_logits: [batch_size x src_vocab_size x tgt_vocab_size]
         return dec_logits.view(-1, dec_logits.size(-1)), enc_self_attns, dec_self_attns, dec_enc_attns
 
 def showgraph(attn):
@@ -178,8 +178,8 @@ def showgraph(attn):
 if __name__ == '__main__':
     sentences = ['ich mochte ein bier P', 'S i want a beer', 'i want a beer E']
 
-    # Transformer Parameters
-    # Padding Should be Zero
+    # Transformer 模型参数
+    # 填充符的索引必须为0
     src_vocab = {'P': 0, 'ich': 1, 'mochte': 2, 'ein': 3, 'bier': 4}
     src_vocab_size = len(src_vocab)
 

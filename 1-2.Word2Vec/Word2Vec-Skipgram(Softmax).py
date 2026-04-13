@@ -1,5 +1,4 @@
-# %%
-# code by Tae Hwan Jung @graykode
+# 代码作者: Tae Hwan Jung @graykode
 import numpy as np
 import torch
 import torch.nn as nn
@@ -12,28 +11,28 @@ def random_batch():
     random_index = np.random.choice(range(len(skip_grams)), batch_size, replace=False)
 
     for i in random_index:
-        random_inputs.append(np.eye(voc_size)[skip_grams[i][0]])  # target
-        random_labels.append(skip_grams[i][1])  # context word
+        random_inputs.append(np.eye(voc_size)[skip_grams[i][0]])  # 目标词
+        random_labels.append(skip_grams[i][1])  # 上下文词
 
     return random_inputs, random_labels
 
-# Model
+# 模型
 class Word2Vec(nn.Module):
     def __init__(self):
         super(Word2Vec, self).__init__()
-        # W and WT is not Traspose relationship
-        self.W = nn.Linear(voc_size, embedding_size, bias=False) # voc_size > embedding_size Weight
-        self.WT = nn.Linear(embedding_size, voc_size, bias=False) # embedding_size > voc_size Weight
+        # W和WT不是转置关系
+        self.W = nn.Linear(voc_size, embedding_size, bias=False) # 词汇表大小 > 嵌入维度 权重矩阵
+        self.WT = nn.Linear(embedding_size, voc_size, bias=False) # 嵌入维度 > 词汇表大小 权重矩阵
 
     def forward(self, X):
-        # X : [batch_size, voc_size]
-        hidden_layer = self.W(X) # hidden_layer : [batch_size, embedding_size]
-        output_layer = self.WT(hidden_layer) # output_layer : [batch_size, voc_size]
+        # X : [批大小, 词汇表大小]
+        hidden_layer = self.W(X) # 隐层 : [批大小, 嵌入维度]
+        output_layer = self.WT(hidden_layer) # 输出层 : [批大小, 词汇表大小]
         return output_layer
 
 if __name__ == '__main__':
-    batch_size = 2 # mini-batch size
-    embedding_size = 2 # embedding size
+    batch_size = 2 # 小批量大小
+    embedding_size = 2 # 嵌入维度
 
     sentences = ["apple banana fruit", "banana orange fruit", "orange banana fruit",
                  "dog cat animal", "cat monkey animal", "monkey dog animal"]
@@ -44,7 +43,7 @@ if __name__ == '__main__':
     word_dict = {w: i for i, w in enumerate(word_list)}
     voc_size = len(word_list)
 
-    # Make skip gram of one size window
+    # 生成大小为1的skip-gram对
     skip_grams = []
     for i in range(1, len(word_sequence) - 1):
         target = word_dict[word_sequence[i]]
@@ -57,7 +56,7 @@ if __name__ == '__main__':
     criterion = nn.CrossEntropyLoss()
     optimizer = optim.Adam(model.parameters(), lr=0.001)
 
-    # Training
+    # 训练
     for epoch in range(5000):
         input_batch, target_batch = random_batch()
         input_batch = torch.Tensor(input_batch)
@@ -66,7 +65,7 @@ if __name__ == '__main__':
         optimizer.zero_grad()
         output = model(input_batch)
 
-        # output : [batch_size, voc_size], target_batch : [batch_size] (LongTensor, not one-hot)
+        # 输出 : [批大小, 词汇表大小], 目标批 : [批大小] (LongTensor, 不是one-hot)
         loss = criterion(output, target_batch)
         if (epoch + 1) % 1000 == 0:
             print('Epoch:', '%04d' % (epoch + 1), 'cost =', '{:.6f}'.format(loss))

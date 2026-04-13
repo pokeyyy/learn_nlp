@@ -9,8 +9,8 @@ def make_batch():
     input_batch, target_batch = [], []
 
     for seq in seq_data:
-        input = [word_dict[n] for n in seq[:-1]] # 'm', 'a' , 'k' is input
-        target = word_dict[seq[-1]] # 'e' is target
+        input = [word_dict[n] for n in seq[:-1]] # 'm', 'a' , 'k' 是输入
+        target = word_dict[seq[-1]] # 'e' 是目标
         input_batch.append(np.eye(n_class)[input])
         target_batch.append(target)
 
@@ -25,24 +25,24 @@ class TextLSTM(nn.Module):
         self.b = nn.Parameter(torch.ones([n_class]))
 
     def forward(self, X):
-        input = X.transpose(0, 1)  # X : [n_step, batch_size, n_class]
+        input = X.transpose(0, 1)  # X : [时间步, 批次大小, 类别数]
 
-        hidden_state = torch.zeros(1, len(X), n_hidden)  # [num_layers(=1) * num_directions(=1), batch_size, n_hidden]
-        cell_state = torch.zeros(1, len(X), n_hidden)     # [num_layers(=1) * num_directions(=1), batch_size, n_hidden]
+        hidden_state = torch.zeros(1, len(X), n_hidden)  # [层数(=1) * 方向(=1), 批次大小, 隐层维度]
+        cell_state = torch.zeros(1, len(X), n_hidden)     # [层数(=1) * 方向(=1), 批次大小, 隐层维度]
 
         outputs, (_, _) = self.lstm(input, (hidden_state, cell_state))
-        outputs = outputs[-1]  # [batch_size, n_hidden]
-        model = self.W(outputs) + self.b  # model : [batch_size, n_class]
+        outputs = outputs[-1]  # [批次大小, 隐层维度]
+        model = self.W(outputs) + self.b  # 模型输出 : [批次大小, 类别数]
         return model
 
 if __name__ == '__main__':
-    n_step = 3 # number of cells(= number of Step)
-    n_hidden = 128 # number of hidden units in one cell
+    n_step = 3 # 时间步数(= LSTM的步数)
+    n_hidden = 128 # 隐层单元数
 
     char_arr = [c for c in 'abcdefghijklmnopqrstuvwxyz']
     word_dict = {n: i for i, n in enumerate(char_arr)}
     number_dict = {i: w for i, w in enumerate(char_arr)}
-    n_class = len(word_dict)  # number of class(=number of vocab)
+    n_class = len(word_dict)  # 分类类别数(=词表大小)
 
     seq_data = ['make', 'need', 'coal', 'word', 'love', 'hate', 'live', 'home', 'hash', 'star']
 
@@ -55,7 +55,7 @@ if __name__ == '__main__':
     input_batch = torch.FloatTensor(input_batch)
     target_batch = torch.LongTensor(target_batch)
 
-    # Training
+    # 训练循环
     for epoch in range(1000):
         optimizer.zero_grad()
 
