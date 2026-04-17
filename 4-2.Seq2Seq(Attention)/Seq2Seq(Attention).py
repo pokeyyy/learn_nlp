@@ -1,6 +1,3 @@
-# %%
-# code by Tae Hwan Jung @grayplate
-# Reference : https://github.com/hunkim/PyTorchZeroToAll/blob/master/14_2_seq2seq_att.py
 import numpy as np
 import torch
 import torch.nn as nn
@@ -188,7 +185,9 @@ if __name__ == '__main__':
     ax = fig.add_subplot(1, 1, 1)
     ax.matshow(trained_attn, cmap='viridis')
     # 设置 x 轴标签为源句子 token
+    ax.set_xticks(range(len([''] + sentences[0].split())))
     ax.set_xticklabels([''] + sentences[0].split(), fontdict={'fontsize': 14})
     # 设置 y 轴标签为目标句子 token
+    ax.set_yticks(range(len([''] + sentences[2].split())))
     ax.set_yticklabels([''] + sentences[2].split(), fontdict={'fontsize': 14})
     plt.show()
