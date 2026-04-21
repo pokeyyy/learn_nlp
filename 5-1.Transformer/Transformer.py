@@ -100,7 +100,7 @@ class ScaledDotProductAttention(nn.Module):
         :param V: Value 张量, 形状 (batch_size, n_heads, len_k, d_v)
         :param attn_mask: 注意力掩码, 形状 (batch_size, n_heads, len_q, len_k)
         :return: context 上下文向量 (batch_size, n_heads, len_q, d_v)
-                 attn 注意力权重 (batch_size, n_heads, len_q, len_k)
+        : attn 注意力权重 (batch_size, n_heads, len_q, len_k)
         """
         # Q 与 K 的转置相乘得到注意力分数
         # K.transpose(-1, -2) 交换最后两维: (batch_size, n_heads, d_k, len_k)
@@ -143,7 +143,7 @@ class MultiHeadAttention(nn.Module):
         :param V: Value 输入, 形状 (batch_size, len_k, d_model)
         :param attn_mask: 注意力掩码, 形状 (batch_size, len_q, len_k)
         :return: 层归一化后的多头注意力输出 (batch_size, len_q, d_model)
-                 以及注意力权重 (batch_size, n_heads, len_q, len_k)
+                以及注意力权重 (batch_size, n_heads, len_q, len_k)
         """
         # 保存残差连接项，并获取 batch_size 用于后续维度变换
         residual, batch_size = Q, Q.size(0)
